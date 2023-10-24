@@ -5,12 +5,8 @@
 #define screenHeight 600
 #define tileSize 50
 
-//650
-//450
-
 short int sceneWidth = tileSize * 13;
 short int sceneHeight = tileSize * 9;
-
 
 typedef struct {
     int maxBombs;
@@ -37,6 +33,102 @@ typedef struct {
     short int exploding;
     short int exploded;
 } objectBomb;
+
+typedef struct {
+    int x;
+    int y;
+} Vector2Int;
+
+Vector2 getCoords(int x, int y) {
+    short int sceneX = (screenWidth - sceneWidth) / 2;
+    short int sceneY = (screenHeight - sceneHeight) / 2;
+    float coordX = x * tileSize + sceneX;
+    float coordY = y * tileSize + sceneY;
+    Vector2 coords = {coordX, coordY};
+    return coords;
+}
+
+Vector2Int getIndex(float x, float y) {
+    short int sceneX = (screenWidth - sceneWidth) / 2;
+    short int sceneY = (screenHeight - sceneHeight) / 2;
+    int indexX = ((x + tileSize / 2) - sceneX) / tileSize;
+    int indexY = ((y + tileSize / 2) - sceneY) / tileSize;
+    Vector2Int index = {indexX, indexY};
+    return index;
+}
+
+typedef struct {
+    int key;
+    short int active;
+    short int ord;
+} keyObject;
+
+short int ord = 0;
+keyObject keys[4] = {{KEY_W, 0, 0}, {KEY_A, 0, 0}, {KEY_S, 0, 0}, {KEY_D, 0, 0}};
+
+void lastKeyUpdate() {
+    for (int i = 0; i < 4; i++) {
+        if (IsKeyDown(keys[i].key) && !keys[i].active) {
+            ord += 1;
+            keys[i].ord = ord;
+            keys[i].active = 1;
+        } else if (!IsKeyDown(keys[i].key) && keys[i].active) {
+            keys[i].active = 0;
+            for (int j = 0; j < 4; j++) {
+                if (keys[j].ord > keys[i].ord) {
+                    keys[j].ord -= 1;
+                }
+            }
+        }
+    }
+}
+
+int getLastKey() {
+    int lastKeyOrd = 0;
+    int lastKey = -1;
+    for (int i = 0; i < 4; i++) {
+        if (keys[i].active && keys[i].ord > lastKey) {
+            lastKeyOrd = keys[i].ord;
+            lastKey = keys[i].key;
+        }
+    }
+    return lastKey;
+}
+
+void prevCollision(objectPlayer *player, short int mapa[][13]) {
+    Vector2Int playerIndex = getIndex(player->x, player->y);
+    
+    for (int y = playerIndex.y - 1; y <= playerIndex.y + 1; y++) {
+        for (int x = playerIndex.x - 1; x <= playerIndex.x + 1; x++) {
+            if (mapa[y][x] == 1) {
+                Vector2 coords = getCoords(x, y);
+
+                DrawCircle(coords.x + tileSize/2, coords.y + tileSize/2, 5.0, RED);
+                DrawRectangleLines(coords.x, coords.y, tileSize, tileSize, RED);
+                
+                int playerLeft = player->x + 2;
+                int playerRight = player->x + player->size - 2;
+                int playerTop = player->y + 2;
+                int playerBottom = player->y + player->size - 2;
+
+                int tileLeft = coords.x;
+                int tileRight = coords.x + tileSize;
+                int tileTop = coords.y;
+                int tileBottom = coords.y + tileSize;
+
+                Rectangle playerRect = { player->x, player->y, player->size, player->size };
+                Rectangle tileRect = { coords.x, coords.y, tileSize, tileSize };
+
+                if (CheckCollisionRecs(playerRect, tileRect)) {
+                    player->y = tileTop - playerTop > 15 ? tileTop - player->size : player->y;
+                    player->x = tileLeft - playerLeft > 15 ? tileLeft - player->size : player->x;
+                    player->y = playerBottom - tileBottom > 15 ? tileBottom : player->y;
+                    player->x = playerRight - tileRight > 15 ? tileRight : player->x;
+                }
+            }
+        }
+    }
+}
 
 void updateMove(objectPlayer *player) {
     short int borderX = (screenWidth - sceneWidth) / 2;
@@ -67,35 +159,32 @@ void updateMove(objectPlayer *player) {
 
     player->velX *= player->fric;
     player->velY *= player->fric;
-    
 }
 
-
 void explodeBombs(objectPlayer *player, objectBomb *bombs[5], Sound explosionSound) {
-    for(int i = 0; i < 5; i++) {
-    if (GetTime() - bombs[i]->spawnTime >= bombs[i]->bombTimer && bombs[i]->is_active) {
-        bombs[i]->exploding = 1;
-    }
-    if (bombs[i]->exploding) {
-        bombs[i]->exploded = GetTime();
-        bombs[i]->exploding = 0;
-        PlaySound(explosionSound);
-    }
-    if (bombs[i]->exploded) {
-        if (GetTime() - bombs[i]->exploded > 0.9) {
-            bombs[i]->exploded = 0;
-            bombs[i]->is_active = 0;
-            player->properties.maxBombs += 1;
+    for (int i = 0; i < 5; i++) {
+        if (GetTime() - bombs[i]->spawnTime >= bombs[i]->bombTimer && bombs[i]->is_active) {
+            bombs[i]->exploding = 1;
         }
-    }
+        if (bombs[i]->exploding) {
+            bombs[i]->exploded = GetTime();
+            bombs[i]->exploding = 0;
+            PlaySound(explosionSound);
+        }
+        if (bombs[i]->exploded) {
+            if (GetTime() - bombs[i]->exploded > 0.9) {
+                bombs[i]->exploded = 0;
+                bombs[i]->is_active = 0;
+                player->properties.maxBombs += 1;
+            }
+        }
     }
 }
 
 objectBomb bombs[5] = {{0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}};
 
-
 void spawnBombs(objectPlayer *player, objectBomb *bombs[5]) {
-    for(int i = 0; i<5; i++) {
+    for (int i = 0; i < 5; i++) {
         if (player->properties.maxBombs > 0 && !bombs[i]->is_active) {
             player->properties.maxBombs -= 1;
             bombs[i]->is_active = 1;
@@ -115,26 +204,19 @@ void spawnBombs(objectPlayer *player, objectBomb *bombs[5]) {
     }
 }
 
-
-
 short int mapa[9][13] = {
-                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                       };
-
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
 
 void debug(objectPlayer *player);
-
-
-
-
 
 
 int main() {
@@ -146,25 +228,21 @@ int main() {
                             {5, 1}
                           };
     
-    //Cria uma matriz de ponteiros para o objeto bombs
+    // Cria uma matriz de ponteiros para o objeto bombs
     objectBomb *bombs_ptr[5];
-    for(int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++) {
         bombs_ptr[i] = &bombs[i];
     }
 
-
-     
     for (int i = 0; i < 9; i += 2) {
         int x;
         for (int j = 0; j < 13; j += 2) {
             x = GetRandomValue(0, 1);
-            if(x && (i > 1 || j > 1)) {
+            if (x && (i > 1 || j > 1)) {
                 mapa[i][j] = 2;
             }
-
         }
     }
-
 
     InitWindow(screenWidth, screenHeight, "Projeto");
     InitAudioDevice();
@@ -175,7 +253,7 @@ int main() {
     while (!WindowShouldClose()) {
         DrawRectangle(sceneX, sceneY, sceneWidth, sceneHeight, GREEN);
 
-        //Depuração da cena
+        // Depuração da cena
         DrawCircle(sceneX, sceneY, 10, RED);
 
         char bombsActives[64];
@@ -188,44 +266,16 @@ int main() {
             spawnBombs(&player, bombs_ptr);
         }
         
-        //Colisões com o mapa
+        // Colisões com o mapa
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 13; j++) {
-                //Desenha os blocos indestrutíveis
+                // Desenha os blocos indestrutíveis
                 if (mapa[i][j] == 1) {
                     short int tileX = sceneX + j * tileSize;
                     short int tileY = sceneY + i * tileSize;
                     DrawRectangle(tileX, tileY, tileSize, tileSize, DARKGRAY);
 
-                    int playerLeft = player.x + 2;
-                    int playerRight = player.x + tileSize - 2;
-                    int playerTop = player.y + 2;
-                    int playerBottom = player.y + tileSize - 2;
-
-                    int tileLeft = tileX;
-                    int tileRight = tileX + tileSize;
-                    int tileTop = tileY;
-                    int tileBottom = tileY + tileSize;
-
-            Rectangle playerRect = { player.x, player.y, tileSize, tileSize };
-            Rectangle tileRect = { tileX, tileY, tileSize, tileSize };
-
-            if (CheckCollisionRecs(playerRect, tileRect)) {
-                        //Colisões laterais
-                        if (playerRight > tileLeft && playerLeft < tileLeft) { //D
-                            player.x = tileX - tileSize;
-                        } else if (playerRight > tileRight && playerLeft < tileRight) { //A
-                            player.x = tileX + tileSize;
-                        }
-                        
-                        //Colisões frontais
-                        if (playerTop > tileTop && playerBottom < tileTop) { //S
-                            player.y = tileY - tileSize;
-                        } else if (playerTop > tileBottom && playerBottom < tileBottom) { //W
-                            player.y = tileY + tileSize;
-                        }
-                    }
-                //Desenha os blocos destrutíveis
+                // Desenha os blocos destrutíveis
                 } else if (mapa[i][j] == 2) {
                     short int tileX = sceneX + j * tileSize;
                     short int tileY = sceneY + i * tileSize;
@@ -233,8 +283,10 @@ int main() {
                 }
             }
         }
-
+        
+        prevCollision(&player, mapa);
         debug(&player);
+
         BeginDrawing();
 
         ClearBackground(BLACK);
@@ -248,7 +300,7 @@ int main() {
 
         explodeBombs(&player, bombs_ptr, explosionSound);
 
-        //Pseudo explosão
+        // Pseudo explosão
         for (int i = 0; i < 5; i++) {
             if (bombs[i].exploded) {
                 DrawRectangle(bombs[i].x, bombs[i].y, tileSize, tileSize, YELLOW);
@@ -259,7 +311,7 @@ int main() {
             }
         }
         
-        //Grade quadriculada
+        // Grade quadriculada
         for (int x = 0; x <= sceneWidth; x += tileSize) {
             DrawLine(screenWidth / 2 - sceneWidth / 2 + x, screenHeight / 2 - sceneHeight / 2, screenWidth / 2 - sceneWidth / 2 + x, screenHeight / 2 + sceneHeight / 2, DARKGRAY);
         }
@@ -277,8 +329,6 @@ int main() {
 
     return 0;
 }
-
-
 
 void debug(objectPlayer *player) {
     char playerXText[64];
