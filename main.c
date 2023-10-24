@@ -57,42 +57,45 @@ Vector2Int getIndex(float x, float y) {
     return index;
 }
 
-typedef struct {
-    int key;
-    short int active;
-    short int ord;
-} keyObject;
+KeyboardKey lastKey = KEY_NULL;
 
-short int ord = 0;
-keyObject keys[4] = {{KEY_W, 0, 0}, {KEY_A, 0, 0}, {KEY_S, 0, 0}, {KEY_D, 0, 0}};
+void getLastKey() {
+        if (IsKeyPressed(KEY_W)) lastKey = KEY_W;
+        if (IsKeyPressed(KEY_A)) lastKey = KEY_A;
+        if (IsKeyPressed(KEY_S)) lastKey = KEY_S;
+        if (IsKeyPressed(KEY_D)) lastKey = KEY_D;
 
-void lastKeyUpdate() {
-    for (int i = 0; i < 4; i++) {
-        if (IsKeyDown(keys[i].key) && !keys[i].active) {
-            ord += 1;
-            keys[i].ord = ord;
-            keys[i].active = 1;
-        } else if (!IsKeyDown(keys[i].key) && keys[i].active) {
-            keys[i].active = 0;
-            for (int j = 0; j < 4; j++) {
-                if (keys[j].ord > keys[i].ord) {
-                    keys[j].ord -= 1;
-                }
-            }
+        // Se alguma das quatro teclas for solta, verifica qual foi a última tecla pressionada
+        if (IsKeyReleased(KEY_W) || IsKeyReleased(KEY_A) || IsKeyReleased(KEY_S) || IsKeyReleased(KEY_D))
+        {
+            // Percorre as quatro teclas em ordem inversa e atribui a primeira que estiver pressionada
+            if (IsKeyDown(KEY_D)) lastKey = KEY_D;
+            else if (IsKeyDown(KEY_S)) lastKey = KEY_S;
+            else if (IsKeyDown(KEY_A)) lastKey = KEY_A;
+            else if (IsKeyDown(KEY_W)) lastKey = KEY_W;
+            else lastKey = KEY_NULL;
         }
-    }
+
 }
 
-int getLastKey() {
-    int lastKeyOrd = 0;
-    int lastKey = -1;
-    for (int i = 0; i < 4; i++) {
-        if (keys[i].active && keys[i].ord > lastKey) {
-            lastKeyOrd = keys[i].ord;
-            lastKey = keys[i].key;
+
+void getLastKey() {
+        if (IsKeyPressed(KEY_W)) lastKey = KEY_W;
+        if (IsKeyPressed(KEY_A)) lastKey = KEY_A;
+        if (IsKeyPressed(KEY_S)) lastKey = KEY_S;
+        if (IsKeyPressed(KEY_D)) lastKey = KEY_D;
+
+        // Se alguma das quatro teclas for solta, verifica qual foi a última tecla pressionada
+        if (IsKeyReleased(KEY_W) || IsKeyReleased(KEY_A) || IsKeyReleased(KEY_S) || IsKeyReleased(KEY_D))
+        {
+            // Percorre as quatro teclas em ordem inversa e atribui a primeira que estiver pressionada
+            if (IsKeyDown(KEY_D)) lastKey = KEY_D;
+            else if (IsKeyDown(KEY_S)) lastKey = KEY_S;
+            else if (IsKeyDown(KEY_A)) lastKey = KEY_A;
+            else if (IsKeyDown(KEY_W)) lastKey = KEY_W;
+            else lastKey = KEY_NULL;
         }
-    }
-    return lastKey;
+
 }
 
 void prevCollision(objectPlayer *player, short int mapa[][13]) {
@@ -118,8 +121,12 @@ void prevCollision(objectPlayer *player, short int mapa[][13]) {
 
                 Rectangle playerRect = { player->x, player->y, player->size, player->size };
                 Rectangle tileRect = { coords.x, coords.y, tileSize, tileSize };
-
+                
                 if (CheckCollisionRecs(playerRect, tileRect)) {
+                    if(playerBottom - tileBottom > 15 && tileLeft - playerLeft > 15 || tileTop - playerTop > 15 && playerRight - tileRight > 15) {
+                        player->x = 0;
+                        player->y = 0;
+                        }
                     player->y = tileTop - playerTop > 15 ? tileTop - player->size : player->y;
                     player->x = tileLeft - playerLeft > 15 ? tileLeft - player->size : player->x;
                     player->y = playerBottom - tileBottom > 15 ? tileBottom : player->y;
