@@ -78,26 +78,6 @@ void getLastKey() {
 
 }
 
-
-void getLastKey() {
-        if (IsKeyPressed(KEY_W)) lastKey = KEY_W;
-        if (IsKeyPressed(KEY_A)) lastKey = KEY_A;
-        if (IsKeyPressed(KEY_S)) lastKey = KEY_S;
-        if (IsKeyPressed(KEY_D)) lastKey = KEY_D;
-
-        // Se alguma das quatro teclas for solta, verifica qual foi a última tecla pressionada
-        if (IsKeyReleased(KEY_W) || IsKeyReleased(KEY_A) || IsKeyReleased(KEY_S) || IsKeyReleased(KEY_D))
-        {
-            // Percorre as quatro teclas em ordem inversa e atribui a primeira que estiver pressionada
-            if (IsKeyDown(KEY_D)) lastKey = KEY_D;
-            else if (IsKeyDown(KEY_S)) lastKey = KEY_S;
-            else if (IsKeyDown(KEY_A)) lastKey = KEY_A;
-            else if (IsKeyDown(KEY_W)) lastKey = KEY_W;
-            else lastKey = KEY_NULL;
-        }
-
-}
-
 void prevCollision(objectPlayer *player, short int mapa[][13]) {
     Vector2Int playerIndex = getIndex(player->x, player->y);
     
@@ -123,10 +103,12 @@ void prevCollision(objectPlayer *player, short int mapa[][13]) {
                 Rectangle tileRect = { coords.x, coords.y, tileSize, tileSize };
                 
                 if (CheckCollisionRecs(playerRect, tileRect)) {
-                    if(playerBottom - tileBottom > 15 && tileLeft - playerLeft > 15 || tileTop - playerTop > 15 && playerRight - tileRight > 15) {
+
+                    if((tileTop - playerTop > 15 || playerBottom - tileBottom > 15)  && (tileLeft - playerLeft > 15 || playerRight - tileRight > 15)) {
                         player->x = 0;
                         player->y = 0;
-                        }
+                    }
+
                     player->y = tileTop - playerTop > 15 ? tileTop - player->size : player->y;
                     player->x = tileLeft - playerLeft > 15 ? tileLeft - player->size : player->x;
                     player->y = playerBottom - tileBottom > 15 ? tileBottom : player->y;
@@ -291,13 +273,11 @@ int main() {
             }
         }
         
-        prevCollision(&player, mapa);
         debug(&player);
 
         BeginDrawing();
 
         ClearBackground(BLACK);
-        DrawRectangle(player.x, player.y, player.size, player.size, BLUE);
 
         for (int i = 0; i < 5; i++) {
             if (bombs[i].is_active && !bombs[i].exploded) {
@@ -317,7 +297,7 @@ int main() {
                 DrawRectangle(bombs[i].x, bombs[i].y + tileSize, tileSize, tileSize, YELLOW);
             }
         }
-        
+
         // Grade quadriculada
         for (int x = 0; x <= sceneWidth; x += tileSize) {
             DrawLine(screenWidth / 2 - sceneWidth / 2 + x, screenHeight / 2 - sceneHeight / 2, screenWidth / 2 - sceneWidth / 2 + x, screenHeight / 2 + sceneHeight / 2, DARKGRAY);
@@ -326,6 +306,9 @@ int main() {
         for (int y = 0; y <= sceneHeight; y += tileSize) {
             DrawLine(screenWidth / 2 - sceneWidth / 2, screenHeight / 2 - sceneHeight / 2 + y, screenWidth / 2 + sceneWidth / 2, screenHeight / 2 - sceneHeight / 2 + y, DARKGRAY);
         }
+
+        prevCollision(&player, mapa);
+        DrawRectangle(player.x, player.y, player.size, player.size, BLUE);
 
         EndDrawing();
     }
