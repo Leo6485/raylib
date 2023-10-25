@@ -122,23 +122,23 @@ void prevCollision(objectPlayer *player, short int mapa[][13]) {
 void updateMove(objectPlayer *player) {
     short int borderX = (screenWidth - sceneWidth) / 2;
     short int borderY = (screenHeight - sceneHeight) / 2;
-
-    if (IsKeyDown(KEY_W) && player->y > borderY)
+    getLastKey();
+    if (lastKey == KEY_W && player->y > borderY)
         player->velY -= player->acc;
     else if (player->y <= borderY)
         player->y = borderY;
 
-    if (IsKeyDown(KEY_S) && player->y < sceneHeight + borderY - player->size)
+    if (lastKey == KEY_S && player->y < sceneHeight + borderY - player->size)
         player->velY += player->acc;
     else if (player->y >= sceneHeight + borderY - player->size)
         player->y = sceneHeight + borderY - player->size;
 
-    if (IsKeyDown(KEY_A) && player->x >= borderX)
+    if (lastKey == KEY_A && player->x >= borderX)
         player->velX -= player->acc;
     else if (player->x < borderX)
         player->x = 0 + borderX;
 
-    if (IsKeyDown(KEY_D) && player->x <= sceneWidth + borderX - player->size)
+    if (lastKey == KEY_D && player->x <= sceneWidth + borderX - player->size)
         player->velX += player->acc;
     else if (player->x >= sceneWidth + borderX - player->size)
         player->x = sceneWidth + borderX - player->size;
