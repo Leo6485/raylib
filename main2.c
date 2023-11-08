@@ -210,7 +210,9 @@ void prevCollision(PlayerObj *player, short int mapa[][13]) {
 
     for (int y = playerIndex.y - 1; y <= playerIndex.y + 1; y++) {
         for (int x = playerIndex.x - 1; x <= playerIndex.x + 1; x++) {
-            if (mapa[y][x] >= 1) {
+
+            //Blocos 1 == blocos indetrutíveis, blocos 2 == blocos detrutiveis | mapa[y][x] == 1 sem colisão para blocos detrutíveis, mapa[y][x] >= 1) com colisão para todos os blocos
+            if (mapa[y][x] == 1) {
                 Vector2 coords = getCoords(x, y);
 
                 DrawCircle(coords.x + tileSize/2, coords.y + tileSize/2, 5.0, RED);
