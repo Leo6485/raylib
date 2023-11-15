@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <raylib.h>
 
-#define screenWidth 1200
+#define screenWidth 800
 #define screenHeight 600
-#define tileSize 50
+#define tileSize 40
+#define NUMTILES_H 15
+#define NUMTILES_W 15
 
-short int sceneWidth = tileSize * 13;
-short int sceneHeight = tileSize * 9;
+short int sceneWidth = tileSize * NUMTILES_W;
+short int sceneHeight = tileSize * NUMTILES_H;
 
 typedef struct {
     int maxBombs;
@@ -83,15 +85,15 @@ void getLastKey() {
 }
 
 //Encontra os blocos próximos ao player e verifica se há colisões
-void prevCollision(PlayerObj *player, short int mapa[][13]) {
+void prevCollision(PlayerObj *player, short int mapa[][NUMTILES_W]) {
     Vector2Int playerIndex = getIndex(player->pos.x, player->pos.y);
     
     for (int y = playerIndex.y - 1; y <= playerIndex.y + 1; y++) {
         for (int x = playerIndex.x - 1; x <= playerIndex.x + 1; x++) {
-            if (mapa[y][x] == 1) {
+            if (mapa[y][x] >= 1 && x >= 0) {
                 Vector2 coords = getCoords(x, y);
 
-                DrawCircle(coords.x + tileSize/2, coords.y + tileSize/2, 5.0, RED);
+                DrawCircle(coords.x + tileSize/2, coords.y + tileSize/2, 4, RED);
                 DrawRectangleLines(coords.x, coords.y, tileSize, tileSize, RED);
                 
                 int playerLeft = player->pos.x + 2;
@@ -110,16 +112,37 @@ void prevCollision(PlayerObj *player, short int mapa[][13]) {
 
                 //Resolve a colisão movendo o player para fora do bloco
                 if (CheckCollisionRecs(playerRect, tileRect)) {
+                    int tolerance = tileSize - 10;
+                    int move_on_collision = 2.8;
 
-                    if((tileTop - playerTop > 15 || playerBottom - tileBottom > 15)  && (tileLeft - playerLeft > 15 || playerRight - tileRight > 15)) {
-                        player->pos.x = 0;
-                        player->pos.y = 0;
+                    int top_dist = tileTop - playerTop;
+                    if(top_dist >= tolerance) {
+                        player->pos.y = tileTop - player->size;
+                    } else if(top_dist < tolerance && top_dist > 1) {
+                        player->pos.y -= move_on_collision;
                     }
 
-                    player->pos.y = tileTop - playerTop > 15 ? tileTop - player->size : player->pos.y;
-                    player->pos.x = tileLeft - playerLeft > 15 ? tileLeft - player->size : player->pos.x;
-                    player->pos.y = playerBottom - tileBottom > 15 ? tileBottom : player->pos.y;
-                    player->pos.x = playerRight - tileRight > 15 ? tileRight : player->pos.x;
+                    int left_dist = tileLeft - playerLeft;
+                    if(left_dist >= tolerance) {
+                        player->pos.x = tileLeft - player->size;
+                    } else if(left_dist < tolerance && left_dist  > 1) {
+                        player->pos.x -= move_on_collision;
+                    }
+
+                    int bottom_dist = playerBottom - tileBottom;
+                    if(bottom_dist >= tolerance) {
+                        player->pos.y = tileBottom;
+                    } else if(bottom_dist < tolerance && bottom_dist > 1) {
+                        player->pos.y += move_on_collision;
+                    }
+
+                    int right_dist = playerRight - tileRight;
+                    if(right_dist >= tolerance) {
+                        player->pos.x = tileRight;
+                    } else if(right_dist < tolerance && right_dist > 1) {
+                        player->pos.x += move_on_collision;
+                    }
+
                 }
             }
         }
@@ -158,6 +181,22 @@ void updateMove(PlayerObj *player) {
     player->velY *= player->fric;
 }
 
+void spawnBombs(PlayerObj *player, BombObj bombs[]) {
+    for (int i = 0; i < 5; i++) {
+        if (player->properties.maxBombs > 0 && !bombs[i].is_active) { //Spawna no máximo x bombas por vez
+
+            player->properties.maxBombs -= 1;
+            bombs[i].is_active = 1;
+
+            Vector2Int index = getIndex(player->pos.x, player->pos.y);
+            bombs[i].pos = getCoords(index.x, index.y);
+
+            bombs[i].spawnTime = GetTime();
+            break;
+        }
+    }
+}
+
 void explodeBombs(PlayerObj *player, BombObj bombs[]) {
     for (int i = 0; i < 5; i++) {
         if (GetTime() - bombs[i].spawnTime >= bombs[i].bombTimer && bombs[i].is_active) {
@@ -178,39 +217,20 @@ void explodeBombs(PlayerObj *player, BombObj bombs[]) {
 }
 
 
-void spawnBombs(PlayerObj *player, BombObj bombs[]) {
-    for (int i = 0; i < 5; i++) {
-        if (player->properties.maxBombs > 0 && !bombs[i].is_active) { //Spawna no máximo x bombas por vez
-            player->properties.maxBombs -= 1;
-            bombs[i].is_active = 1;
+short int mapa[NUMTILES_H][NUMTILES_W];
 
-            int coordX = (((int)(player->pos.x + tileSize/2) / tileSize) * tileSize) - tileSize/2;
-            coordX += ((int)(player->pos.x + tileSize/2) % tileSize > tileSize / 2) ? tileSize : 0;
+void initMapa() {
 
-            int coordY = (((int)(player->pos.y + tileSize/2) / tileSize) * tileSize) - tileSize/2;
-            coordY += ((int)(player->pos.y + tileSize/2) % tileSize > tileSize / 2) ? tileSize : 0;
-            //Obtém uma posição normalizada do player, para que a bomba se encaixe no mapa
-
-            bombs[i].pos.x = coordX;
-            bombs[i].pos.y = coordY;
-
-            bombs[i].spawnTime = GetTime();
-            break;
+    for (int i = 0; i < NUMTILES_H; i++) {
+        for (int j = 0; j < NUMTILES_W; j++) {
+            if(i%2 && j%2) {
+                mapa[i][j] = 1;
+            } else {
+                mapa[i][j] = 0;
+            }
         }
     }
 }
-
-short int mapa[9][13] = {
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-};
 
 //Assinatura de funções
 void debug(PlayerObj *player, BombObj bombs[], Vector2 scene);
@@ -222,14 +242,14 @@ void updateGame(PlayerObj *player, BombObj bombs[], Vector2 scene) {
 
 
         updateMove(player);
-        if (IsKeyDown(KEY_ENTER) && GetTime() - player->properties.bombDelay > 1) {
+        if (IsKeyDown(KEY_SPACE) && GetTime() - player->properties.bombDelay > 1) {
             player->properties.bombDelay = GetTime();
             spawnBombs(player, bombs);
         }
 
         //Desenha o mapa
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 13; j++) {
+        for (int i = 0; i < NUMTILES_H; i++) {
+            for (int j = 0; j < NUMTILES_W; j++) {
                 // Desenha os blocos indestrutíveis
                 if (mapa[i][j] == 1) {
                     short int tileX = scene.x + j * tileSize;
@@ -289,14 +309,15 @@ void updateGame(PlayerObj *player, BombObj bombs[], Vector2 scene) {
 int main() {
     //Coordenadas de origem da tela verde
     Vector2 scene = {(screenWidth - sceneWidth) / 2, (screenHeight - sceneHeight) / 2};
+    initMapa();
 
     PlayerObj player = {{scene.x, scene.y}, tileSize, 0.0, 0.0, 2.5, 0.5, {5, 1, 0}};
     BombObj bombs[5] = {{0, {0, 0}, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}, {0, 0, 0, 4.0, 0, 0, 0}};
 
     //Adiciona os blocos destrútiveis de forma aletória no mapa
-    for (int i = 0; i < 9; i += 2) {
+    for (int i = 0; i < NUMTILES_H; i += 2) {
         int x;
-        for (int j = 0; j < 13; j += 2) {
+        for (int j = 0; j < NUMTILES_W; j += 2) {
             x = GetRandomValue(0, 1);
             if (x && (i > 1 || j > 1)) {
                 mapa[i][j] = 2;
