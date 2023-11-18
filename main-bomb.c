@@ -25,13 +25,11 @@ typedef struct Bomb{
     Rectangle explosion_left;
     Rectangle explosion_up;
     Rectangle explosion_down;
-    float maxTop;
-    float maxRight;
-    float maxBottom;
-    float maxLeft;
+    float indexTop;
+    float indexRight;
+    float indexBottom;
+    float indexLeft;
     int isActive;
-    int distance;
-    int vel;
     int time;
 }Bomb;
 
@@ -45,6 +43,8 @@ typedef struct {
     int draw_bomb;
     int put_bomb;
     int num_bombs;
+    int bomb_distance;
+    float bomb_vel;
     Bomb bombs[10];
 } PlayerObj;
 
@@ -79,19 +79,11 @@ short int mapa[NUMTILES_H][NUMTILES_W];
 
 void initBombs(game *g, int n) {
     for(int i = 0; i < n; i++) {
-            
-        //g->player->bombs[i].pos = {0, 0, TILESIZE, TILESIZE};
-        //g->player->bombs[i].explosion_right {0, 0, TILESIZE, TILESIZE};
-        //g->player->bombs[i].explosion_left = {0, 0, TILESIZE, TILESIZE};
-        //g->player->bombs[i].explosion_up = {0, 0, TILESIZE, TILESIZE};
-        //g->player->bombs[i].explosion_down = {0, 0, TILESIZE, TILESIZE};
-        g->player.bombs[i].maxTop = 0;
-        g->player.bombs[i].maxRight = 0;
-        g->player.bombs[i].maxBottom = 0;
-        g->player.bombs[i].maxLeft = 0;
+        g->player.bombs[i].explosion_right = (Rectangle){0, 0, 0, 0};
+        g->player.bombs[i].explosion_left = (Rectangle){0, 0, 0, 0};
+        g->player.bombs[i].explosion_up = (Rectangle){0, 0, 0, 0};
+        g->player.bombs[i].explosion_down = (Rectangle){0, 0, 0, 0};
         g->player.bombs[i].isActive = 0;
-        g->player.bombs[i].distance = 5;
-        g->player.bombs[i].vel = TILESIZE / 4;
         g->player.bombs[i].time = 0;
     }
 }
@@ -101,7 +93,7 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]);
 
 int main() {
     game g = {
-        .player = {{scene.x, scene.y}, TILESIZE, 0.0, 0.0, 2.5, 0.5, 0, 0, 5, {{},{},{},{},{},{},{},{},{},{}}}
+        .player = {{scene.x, scene.y}, TILESIZE, 0.0, 0.0, 2.5, 0.5, 0, 0, 5, 4, 0.25, {{},{},{},{},{},{},{},{},{},{}}}
     };
     
     initMapa();
@@ -154,12 +146,17 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
     if (IsKeyPressed(KEY_SPACE)) {
         g->player.put_bomb = 1;
     }
+
     for(int i = 0; i < 10; i++){
-    Vector2Int bombIndex = getIndex(g->player.bombs[i].pos.x, g->player.bombs[i].pos.y);
-    char bombText[64];
-    snprintf(bombText, sizeof(bombText), "Bomb[%d] max: %.2lf", i, g->player.bombs[i].maxRight);
-    //snprintf(bombText, sizeof(bombText), "Bomb[%d] Index: %.2lf", i, bombIndex.x);
-    DrawText(bombText, 10, 90 + i*30, 18, DARKGRAY);
+        if(g->player.bombs[i].isActive) {
+            Vector2Int bombIndex = getIndex(g->player.bombs[i].pos.x, g->player.bombs[i].pos.y);
+            char bombText[64];
+
+            //snprintf(bombText, sizeof(bombText), "Bomb[%d] max: %.2lf", i, g->player.bombs[i].maxRight);
+            snprintf(bombText, sizeof(bombText), "Bomb[%d] Index: %f", i, g->player.bombs[i].indexRight);
+
+            DrawText(bombText, 10, 90 + i*30, 18, DARKGRAY);
+        }
     }
 
     if (g->player.put_bomb == 1) {
@@ -178,56 +175,12 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
 
                 g->player.bombs[i].time = GetTime();
 
-                g->player.bombs[i].maxTop = 0;
-                g->player.bombs[i].maxRight = 0;
-                g->player.bombs[i].maxBottom = 0;
-                g->player.bombs[i].maxLeft = 0;
-
                 Vector2Int bombIndex = getIndex(g->player.bombs[i].pos.x, g->player.bombs[i].pos.y);
 
-                for (int j = bombIndex.y + 1; j <= bombIndex.y + g->player.bombs[i].distance; j++) {
-                    if (mapa[j][bombIndex.x] == 0 && j < NUMTILES_H) {
-                        g->player.bombs[i].maxBottom += TILESIZE;
-                    } else if (mapa[j][bombIndex.x] == 2 && j > 0) {
-                        g->player.bombs[i].maxBottom += TILESIZE;
-                        break;
-                    } else if (mapa[j][bombIndex.x] == 1 && j > 0) {
-                        break;
-                    }
-                }
-
-                for (int j = bombIndex.x; j <= bombIndex.x + g->player.bombs[i].distance; j++) {
-                    if (mapa[bombIndex.y][j] == 0 && j < NUMTILES_W) {
-                        g->player.bombs[i].maxRight += TILESIZE;
-                    } else if (mapa[bombIndex.y][j] == 2 && j > 0) {
-                        g->player.bombs[i].maxRight += TILESIZE;
-                        break;
-                    } else if (mapa[bombIndex.y][j] == 1 && j > 0) {
-                        break;
-                    }
-                }
-
-                for (int j = bombIndex.y; j >= bombIndex.y - g->player.bombs[i].distance; j--) {
-                    if (mapa[j][bombIndex.x] == 0 && j > 0) {
-                        g->player.bombs[i].maxTop += TILESIZE;
-                    } else if (mapa[j][bombIndex.x] == 2 && j > 0) {
-                        g->player.bombs[i].maxTop += TILESIZE;
-                        break;
-                    } else if (mapa[j][bombIndex.x] == 1 && j > 0) {
-                        break;
-                    }
-                }
-
-                for (int j = bombIndex.x; j >= bombIndex.x - g->player.bombs[i].distance; j--) {
-                    if (mapa[bombIndex.y][j] == 0 && j > 0) {
-                        g->player.bombs[i].maxLeft += TILESIZE;
-                    } else if (mapa[bombIndex.y][j] == 2 && j > 0) {
-                        g->player.bombs[i].maxLeft += TILESIZE;
-                        break;
-                    } else if (mapa[bombIndex.y][j] == 1 && j > 0) {
-                        break;
-                    }
-                }
+                g->player.bombs[i].indexBottom = bombIndex.y;
+                g->player.bombs[i].indexRight = bombIndex.x;
+                g->player.bombs[i].indexBottom = bombIndex.y;
+                g->player.bombs[i].indexLeft = bombIndex.x;
 
                 break;
             }
@@ -237,39 +190,68 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
     for (int i = 0; i < g->player.num_bombs; i++) {
         if (g->player.bombs[i].isActive == 1) {
             if (fabs(g->player.bombs[i].time - GetTime()) > 3 && fabs(g->player.bombs[i].time - GetTime()) < 5) {
-                float grow_tax = g->player.bombs[i].vel;
+                int grow_tax = g->player.bomb_distance;
 
-                if (g->player.bombs[i].explosion_right.width < g->player.bombs[i].distance * TILESIZE) {
-                    if (g->player.bombs[i].explosion_right.width + grow_tax <= g->player.bombs[i].maxRight) {
-                        g->player.bombs[i].explosion_right.width += grow_tax;
+                Vector2Int bombIndex = getIndex(g->player.bombs[i].pos.x, g->player.bombs[i].pos.y);
+
+                // Right
+                if (g->player.bombs[i].explosion_right.width < g->player.bomb_distance * TILESIZE) {
+                    float indexRight = g->player.bombs[i].indexRight;
+
+                    int prevBlock = mapa[(int)bombIndex.y][(int)(indexRight + g->player.bomb_vel)];
+                    int actualBlock = mapa[(int)bombIndex.y][(int)(indexRight + g->player.bomb_vel / 2 + 1)];
+
+                    if (prevBlock != 2 && actualBlock != 1) {
+                        g->player.bombs[i].indexRight += 0.25;
+                        g->player.bombs[i].explosion_right.width += TILESIZE * g->player.bomb_vel;
                     }
                 }
 
-                if (g->player.bombs[i].explosion_left.width < g->player.bombs[i].distance * TILESIZE) {
-                    if (g->player.bombs[i].explosion_left.width + grow_tax <= g->player.bombs[i].maxLeft) {
-                        g->player.bombs[i].explosion_left.width += grow_tax;
-                        g->player.bombs[i].explosion_left.x -= grow_tax;
+                // Left
+                if (g->player.bombs[i].explosion_left.width < g->player.bomb_distance * TILESIZE) {
+                    float indexLeft = g->player.bombs[i].indexLeft;
+
+                    int prevBlock = mapa[(int)bombIndex.y][(int)(indexLeft - g->player.bomb_vel + 0.001)];
+                    int actualBlock = mapa[(int)bombIndex.y][(int)(indexLeft - g->player.bomb_vel / 2 - 0.999)];
+
+                    if (prevBlock != 2 && actualBlock != 1) {
+                        g->player.bombs[i].indexLeft -= g->player.bomb_vel;
+                        g->player.bombs[i].explosion_left.width += TILESIZE * g->player.bomb_vel;
+                        g->player.bombs[i].explosion_left.x -= TILESIZE * g->player.bomb_vel;
                     }
                 }
 
-                if (g->player.bombs[i].explosion_up.height < g->player.bombs[i].distance * TILESIZE) {
-                    if (g->player.bombs[i].explosion_up.height + grow_tax <= g->player.bombs[i].maxTop) {
-                        g->player.bombs[i].explosion_up.height += grow_tax;
+                // Bottom
+                if (g->player.bombs[i].explosion_down.height < g->player.bomb_distance * TILESIZE) {
+                    float indexBottom = g->player.bombs[i].indexBottom;
+
+                    int prevBlock = mapa[(int)(indexBottom + g->player.bomb_vel - 0.001)][(int)bombIndex.x];
+                    int actualBlock = mapa[(int)(indexBottom + g->player.bomb_vel / 2 + 0.999)][(int)bombIndex.x];
+
+                    if (prevBlock != 2 && actualBlock != 1) {
+                        g->player.bombs[i].indexBottom += g->player.bomb_vel;
+                        g->player.bombs[i].explosion_down.height += TILESIZE * g->player.bomb_vel;
                     }
                 }
 
-                if (g->player.bombs[i].explosion_down.height < g->player.bombs[i].distance * TILESIZE) {
-                    if (g->player.bombs[i].explosion_down.height + grow_tax <= g->player.bombs[i].maxBottom) {
-                        g->player.bombs[i].explosion_down.height += grow_tax;
-                        g->player.bombs[i].explosion_down.y -= grow_tax;
+                // Top
+                if (g->player.bombs[i].explosion_up.height < g->player.bomb_distance * TILESIZE) {
+                    float indexTop = g->player.bombs[i].indexTop;
+
+                    int prevBlock = mapa[(int)(indexTop - g->player.bomb_vel + 0.001)][(int)bombIndex.x];
+                    int actualBlock = mapa[(int)(indexTop - g->player.bomb_vel / 2 - 0.999)][(int)bombIndex.x];
+
+                    if (prevBlock != 2 && actualBlock != 1) {
+                        g->player.bombs[i].indexTop -= g->player.bomb_vel;
+                        g->player.bombs[i].explosion_up.height += TILESIZE * g->player.bomb_vel;
+                        g->player.bombs[i].explosion_up.y -= TILESIZE * g->player.bomb_vel;
                     }
                 }
-            } else if (fabs(g->player.bombs[i].time - GetTime()) > 3) {
+            } else if(fabs(g->player.bombs[i].time - GetTime()) > 3){
                 g->player.bombs[i].isActive = 0;
             }
         }
     }
-
     g->player.put_bomb = 0;
 }
 
@@ -316,10 +298,10 @@ void prevCollision(game *g, short int mapa[][NUMTILES_W]) {
                 DrawCircle(coords.x + TILESIZE / 2, coords.y + TILESIZE / 2, 4, RED);
                 DrawRectangleLines(coords.x, coords.y, TILESIZE, TILESIZE, RED);
 
-                int playerLeft = g->player.pos.x + 2;
-                int playerRight = g->player.pos.x + g->player.size - 2;
-                int playerTop = g->player.pos.y + 2;
-                int playerBottom = g->player.pos.y + g->player.size - 2;
+                int playerLeft = g->player.pos.x;
+                int playerRight = g->player.pos.x + g->player.size;
+                int playerTop = g->player.pos.y;
+                int playerBottom = g->player.pos.y + g->player.size;
 
                 int tileLeft = coords.x;
                 int tileRight = coords.x + TILESIZE;
