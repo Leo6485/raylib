@@ -103,11 +103,11 @@ int main() {
         for (int j = 0; j < NUMTILES_W; j += 2) {
             x = GetRandomValue(0, 1);
             if (x && (i > 1 || j > 1)) {
-                mapa[i][j] = 2;
+                mapa[i][j] = 1;
             }
         }
     }
-
+    mapa[2][2] = 2;
     InitWindow(SCREEN_W, SCREEN_H, "Projeto");
     SetTargetFPS(60);
 
@@ -153,7 +153,7 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
             char bombText[64];
 
             //snprintf(bombText, sizeof(bombText), "Bomb[%d] max: %.2lf", i, g->player.bombs[i].maxRight);
-            snprintf(bombText, sizeof(bombText), "Bomb[%d] Index: %f", i, g->player.bombs[i].indexRight);
+            snprintf(bombText, sizeof(bombText), "Bomb[%d] Index: %f", i, g->player.bombs[i].indexTop);
 
             DrawText(bombText, 10, 90 + i*30, 18, DARKGRAY);
         }
@@ -179,7 +179,7 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
 
                 g->player.bombs[i].indexBottom = bombIndex.y;
                 g->player.bombs[i].indexRight = bombIndex.x;
-                g->player.bombs[i].indexBottom = bombIndex.y;
+                g->player.bombs[i].indexTop = bombIndex.y;
                 g->player.bombs[i].indexLeft = bombIndex.x;
 
                 break;
@@ -198,11 +198,11 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
                 if (g->player.bombs[i].explosion_right.width < g->player.bomb_distance * TILESIZE) {
                     float indexRight = g->player.bombs[i].indexRight;
 
-                    int prevBlock = mapa[(int)bombIndex.y][(int)(indexRight + g->player.bomb_vel)];
-                    int actualBlock = mapa[(int)bombIndex.y][(int)(indexRight + g->player.bomb_vel / 2 + 1)];
+                    int prevBlock = mapa[(int)bombIndex.y][(int)(indexRight + g->player.bomb_vel - 0.001)];
+                    int actualBlock = mapa[(int)bombIndex.y][(int)(indexRight + g->player.bomb_vel + 0.999)];
 
-                    if (prevBlock != 2 && actualBlock != 1) {
-                        g->player.bombs[i].indexRight += 0.25;
+                    if (prevBlock != 2 && actualBlock != 1 && (indexRight + g->player.bomb_vel + 0.999) <= NUMTILES_W) {
+                        g->player.bombs[i].indexRight += g->player.bomb_vel;
                         g->player.bombs[i].explosion_right.width += TILESIZE * g->player.bomb_vel;
                     }
                 }
@@ -211,26 +211,14 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
                 if (g->player.bombs[i].explosion_left.width < g->player.bomb_distance * TILESIZE) {
                     float indexLeft = g->player.bombs[i].indexLeft;
 
-                    int prevBlock = mapa[(int)bombIndex.y][(int)(indexLeft - g->player.bomb_vel + 0.001)];
-                    int actualBlock = mapa[(int)bombIndex.y][(int)(indexLeft - g->player.bomb_vel / 2 - 0.999)];
+                    int prevBlock = mapa[(int)bombIndex.y][(int)(indexLeft - g->player.bomb_vel + 1)];
+                    int actualBlock = mapa[(int)bombIndex.y][(int)(indexLeft - g->player.bomb_vel)];
 
-                    if (prevBlock != 2 && actualBlock != 1) {
+
+                    if (prevBlock != 2 && actualBlock != 1 && indexLeft - g->player.bomb_vel >= -0) {
                         g->player.bombs[i].indexLeft -= g->player.bomb_vel;
                         g->player.bombs[i].explosion_left.width += TILESIZE * g->player.bomb_vel;
                         g->player.bombs[i].explosion_left.x -= TILESIZE * g->player.bomb_vel;
-                    }
-                }
-
-                // Bottom
-                if (g->player.bombs[i].explosion_down.height < g->player.bomb_distance * TILESIZE) {
-                    float indexBottom = g->player.bombs[i].indexBottom;
-
-                    int prevBlock = mapa[(int)(indexBottom + g->player.bomb_vel - 0.001)][(int)bombIndex.x];
-                    int actualBlock = mapa[(int)(indexBottom + g->player.bomb_vel / 2 + 0.999)][(int)bombIndex.x];
-
-                    if (prevBlock != 2 && actualBlock != 1) {
-                        g->player.bombs[i].indexBottom += g->player.bomb_vel;
-                        g->player.bombs[i].explosion_down.height += TILESIZE * g->player.bomb_vel;
                     }
                 }
 
@@ -238,18 +226,31 @@ void update_bomb(game *g, short int mapa[][NUMTILES_W]) {
                 if (g->player.bombs[i].explosion_up.height < g->player.bomb_distance * TILESIZE) {
                     float indexTop = g->player.bombs[i].indexTop;
 
-                    int prevBlock = mapa[(int)(indexTop - g->player.bomb_vel + 0.001)][(int)bombIndex.x];
-                    int actualBlock = mapa[(int)(indexTop - g->player.bomb_vel / 2 - 0.999)][(int)bombIndex.x];
+                    int prevBlock = mapa[(int)(indexTop - g->player.bomb_vel + 1)][(int)bombIndex.x];
+                    int actualBlock = mapa[(int)(indexTop - g->player.bomb_vel)][(int)bombIndex.x];
 
-                    if (prevBlock != 2 && actualBlock != 1) {
+                    if (prevBlock != 2 && actualBlock != 1 && indexTop - g->player.bomb_vel >= 0) {
                         g->player.bombs[i].indexTop -= g->player.bomb_vel;
                         g->player.bombs[i].explosion_up.height += TILESIZE * g->player.bomb_vel;
                         g->player.bombs[i].explosion_up.y -= TILESIZE * g->player.bomb_vel;
                     }
                 }
+                // Bottom
+                if (g->player.bombs[i].explosion_down.height < g->player.bomb_distance * TILESIZE) {
+                    float indexBottom = g->player.bombs[i].indexBottom;
+
+                    int prevBlock = mapa[(int)(indexBottom + g->player.bomb_vel - 0.001)][(int)bombIndex.x];
+                    int actualBlock = mapa[(int)(indexBottom + g->player.bomb_vel + 0.999)][(int)bombIndex.x];
+
+                    if (prevBlock != 2 && actualBlock != 1 && (indexBottom + g->player.bomb_vel + 0.999) <= NUMTILES_H) {
+                        g->player.bombs[i].indexBottom += g->player.bomb_vel;
+                        g->player.bombs[i].explosion_down.height += TILESIZE * g->player.bomb_vel;
+                    }
+                }
+
             } else if(fabs(g->player.bombs[i].time - GetTime()) > 3){
                 g->player.bombs[i].isActive = 0;
-            }
+	    }
         }
     }
     g->player.put_bomb = 0;
